@@ -1,21 +1,40 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Criação de Usuário', () => {
+test.describe('Create User', () => {
 
   function gerarDadosUnicos() {
+    const nomes = [
+      'Ana Silva',
+      'Carlos Souza',
+      'Mariana Oliveira',
+      'João Pereira',
+      'Fernanda Costa',
+      'Lucas Almeida',
+      'Patrícia Santos',
+      'Rafael Lima',
+      'Juliana Rocha',
+      'Bruno Martins',
+      'Luana Fernandes',
+      'Gustavo Ribeiro',
+      'Camila Dias',
+      'Felipe Carvalho',
+    ];
     const timestamp = Date.now();
+    const nome = nomes[Math.floor(Math.random() * nomes.length)];
+    const numerosEmail = Math.floor(1000 + Math.random() * 9000); // 4 dígitos aleatórios
     return {
-      nome: `Usuário Teste ${timestamp}`,
+      nome: nome,
       matricula: `${timestamp.toString().slice(-8)}`,
-      email: `usuario${timestamp}@email.com`,
+      email: `${nome.toLowerCase().normalize('NFD').replace(/[^\w\s]/g, '').replace(/ /g, '')}${numerosEmail}@gmail.com`,
       cpf: `${Math.floor(10000000000 + Math.random() * 89999999999)}`
     };
   }
 
-  test('Deve criar um novo usuário com dados válidos', async ({ page }) => {
+    // Testa se é possível criar um novo usuário com dados válidos
+  test('Should create a new user with valid data', async ({ page }) => {
     const user = gerarDadosUnicos();
 
-    await page.goto('http://localhost:5173/cadastro');
+    await page.goto('http://localhost:4000/cadastro');
 
     await page.getByRole('textbox', { name: 'Nome Completo' }).fill(user.nome);
     await page.getByRole('textbox', { name: 'Matrícula' }).fill(user.matricula);
@@ -29,16 +48,18 @@ test.describe('Criação de Usuário', () => {
 
     await page.getByRole('button', { name: 'Cadastrar' }).click();
 
-    await expect(page).toHaveURL('http://localhost:5173/');
+    await expect(page).toHaveURL('http://localhost:4000/');
   });
 
-  test('Deve validar campos obrigatórios', async ({ page }) => {
+    // Testa a validação dos campos obrigatórios
+  test('Should validate required fields', async ({ page }) => {
     await page.goto('http://localhost:5173/cadastro');
     await page.getByRole('button', { name: 'Cadastrar' }).click();
     await expect(page.locator('.error, .alert-danger')).toContainText(/obrigatóri|preencha/i);
   });
 
-  test('Deve validar email inválido', async ({ page }) => {
+    // Testa a validação de email inválido
+  test('Should validate invalid email', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await page.goto('http://localhost:5173/cadastro');
@@ -58,7 +79,8 @@ test.describe('Criação de Usuário', () => {
     await expect(page.locator('.error, .alert-danger')).toContainText(/email inválido|email não é válido/i);
   });
 
-  test('Deve validar senhas diferentes', async ({ page }) => {
+    // Testa a validação quando as senhas são diferentes
+  test('Should validate different passwords', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await page.goto('http://localhost:5173/cadastro');
