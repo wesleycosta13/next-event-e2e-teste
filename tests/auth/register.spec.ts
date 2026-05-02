@@ -1,4 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  // Tente pegar a URL da variável de ambiente, se não usa a padrão do postgresql local
+  connectionString: process.env.DATABASE_URL
+});
+
+const emailsCriados: string[] = [];
 
 // 🔹 Base URL (evita repetição)
 const BASE_URL = 'http://localhost:4000/cadastro';
@@ -17,7 +25,7 @@ function gerarDadosUnicos() {
   const nome = nomes[Math.floor(Math.random() * nomes.length)];
   const numerosEmail = Math.floor(1000 + Math.random() * 9000);
 
-  return {
+  const user = {
     nome,
     matricula: `${timestamp.toString().slice(-8)}`,
     email: `${nome.toLowerCase().normalize('NFD')
@@ -25,6 +33,9 @@ function gerarDadosUnicos() {
       .replace(/ /g, '')}${numerosEmail}@gmail.com`,
     cpf: `${Math.floor(10000000000 + Math.random() * 89999999999)}`
   };
+  
+  emailsCriados.push(user.email);
+  return user;
 }
 
 // 🔹 Preenche formulário completo
@@ -45,11 +56,25 @@ test.beforeEach(async ({ page }) => {
   await page.goto(BASE_URL);
 });
 
+// 🔹 Cleanup: Apaga os usuários criados ao final de CADA teste
+test.afterEach(async () => {
+  while (emailsCriados.length > 0) {
+    const email = emailsCriados.pop();
+    if (email) {
+      try {
+        await pool.query('DELETE FROM "usuario" WHERE email = $1', [email]);
+      } catch (err) {
+        console.error(`Erro ao deletar usuário ${email}:`, err);
+      }
+    }
+  }
+});
+
 test.describe('Cadastro de Usuário', () => {
 
   // 🔥 EMAIL
 
-  test('❌ Email inválido', async ({ page }) => {
+  test('Email inválido', async ({ page }) => {
     const user = gerarDadosUnicos();
     user.email = 'email-invalido';
 
@@ -68,10 +93,10 @@ test.describe('Cadastro de Usuário', () => {
     await page.getByRole('button', { name: 'Cadastrar' }).click();
 
     const validationMessage = await page.getByRole('textbox', { name: 'Email' }).evaluate(el => (el as HTMLInputElement).validationMessage);
-    await expect(validationMessage).toMatch(/obrigat|preencha/i);
+    await expect(validationMessage).toMatch(/obrigat|preencha|please fill/i);
   });
 
-  test('❌ Email duplicado', async ({ page }) => {
+  test('Email duplicado', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
@@ -88,7 +113,7 @@ test.describe('Cadastro de Usuário', () => {
   });
 
   // 🔥 SENHA
-  test('❌ Senha fraca', async ({ page }) => {
+  test('Senha fraca', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
@@ -102,7 +127,7 @@ test.describe('Cadastro de Usuário', () => {
 
   // 🔥 ANO
 
-  test('❌ Ano de ingresso vazio', async ({ page }) => {
+  test('Ano de ingresso vazio', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
@@ -111,10 +136,10 @@ test.describe('Cadastro de Usuário', () => {
     await page.getByRole('button', { name: 'Cadastrar' }).click();
 
     const validationMessage = await page.getByRole('textbox', { name: 'Ano de ingresso' }).evaluate(el => (el as HTMLInputElement).validationMessage);
-    await expect(validationMessage).toMatch(/obrigat|preencha/i);
+    await expect(validationMessage).toMatch(/obrigat|preencha|please fill/i);
   });
 
-  test('❌ Deve exibir erro ao informar menos de 4 dígitos', async ({ page }) => {
+  test('Deve exibir erro ao informar menos de 4 dígitos', async ({ page }) => {
   const user = gerarDadosUnicos();
 
   await preencherFormulario(page, user);
@@ -130,7 +155,7 @@ test.describe('Cadastro de Usuário', () => {
   ).toBeVisible();
 });
 
-test('❌ Deve exibir erro para ano inválido', async ({ page }) => {
+test('Deve exibir erro para ano inválido', async ({ page }) => {
   const user = gerarDadosUnicos();
 
   await preencherFormulario(page, user);
@@ -148,7 +173,7 @@ test('❌ Deve exibir erro para ano inválido', async ({ page }) => {
 
   // 🔥 FLUXO FELIZ
 
-  test('✅ Cadastro com sucesso', async ({ page }) => {
+  test('Cadastro com sucesso', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
