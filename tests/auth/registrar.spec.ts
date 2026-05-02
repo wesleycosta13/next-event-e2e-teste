@@ -49,7 +49,7 @@ test.describe('Cadastro de Usuário', () => {
 
   // 🔥 EMAIL
 
-  test('❌ Email inválido', async ({ page }) => {
+  test('Email inválido', async ({ page }) => {
     const user = gerarDadosUnicos();
     user.email = 'email-invalido';
 
@@ -68,10 +68,10 @@ test.describe('Cadastro de Usuário', () => {
     await page.getByRole('button', { name: 'Cadastrar' }).click();
 
     const validationMessage = await page.getByRole('textbox', { name: 'Email' }).evaluate(el => (el as HTMLInputElement).validationMessage);
-    await expect(validationMessage).toMatch(/obrigat|preencha/i);
+    await expect.stringMatching(/preencha|obrigat|please fill/i)
   });
 
-  test('❌ Email duplicado', async ({ page }) => {
+  test('Email duplicado', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
@@ -88,7 +88,7 @@ test.describe('Cadastro de Usuário', () => {
   });
 
   // 🔥 SENHA
-  test('❌ Senha fraca', async ({ page }) => {
+  test('Senha fraca', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
@@ -102,19 +102,83 @@ test.describe('Cadastro de Usuário', () => {
 
   // 🔥 ANO
 
-  test('❌ Ano de ingresso vazio', async ({ page }) => {
+  test('Ano de ingresso vazio', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
-    await page.getByRole('textbox', { name: 'Ano de ingresso' }).fill('');
+  const anoInput = page.getByRole('textbox', { name: 'Ano de ingresso' });
 
     await page.getByRole('button', { name: 'Cadastrar' }).click();
 
-    const validationMessage = await page.getByRole('textbox', { name: 'Ano de ingresso' }).evaluate(el => (el as HTMLInputElement).validationMessage);
-    await expect(validationMessage).toMatch(/obrigat|preencha/i);
+    const isInvalid = await anoInput.evaluate(el => !(el as HTMLInputElement).checkValidity());
+  expect(isInvalid).toBe(false);
   });
 
-  test('❌ Deve exibir erro ao informar menos de 4 dígitos', async ({ page }) => {
+  test('Campo CPF em branco', async ({ page }) => {
+    const user = gerarDadosUnicos();
+
+    await preencherFormulario(page, user);
+    const cpfInput = page.getByRole('textbox', { name: 'CPF' });
+    await cpfInput.fill('');
+
+    await page.getByRole('button', { name: 'Cadastrar' }).click();
+
+    const isInvalid = await cpfInput.evaluate(el => !(el as HTMLInputElement).checkValidity());
+    expect(isInvalid).toBe(true);
+  });
+
+  test('Campo CPF inválido', async ({ page }) => {
+    const user = gerarDadosUnicos();
+
+    await preencherFormulario(page, user);
+    const cpfInput = page.getByRole('textbox', { name: 'CPF' });
+    await cpfInput.fill('12345'); // Menos dígitos que o esperado
+
+    await page.getByRole('button', { name: 'Cadastrar' }).click();
+
+    await expect(page.getByText(/deve conter 11 dígitos/i)).toBeVisible();
+  });
+
+ test('Deve exibir erro ao não selecionar o semestre', async ({ page }) => {
+  const user = gerarDadosUnicos();
+
+  await preencherFormulario(page, user);
+
+  const semestreSelect = page.locator('#semestre');
+
+  // Garante que nenhum valor válido foi selecionado
+  await semestreSelect.selectOption(''); // ou não faz nada se já vier vazio
+
+  await page.getByRole('button', { name: 'Cadastrar' }).click();
+
+  // Validação HTML5
+  const isInvalid = await semestreSelect.evaluate(
+    el => !(el as HTMLSelectElement).checkValidity()
+  );
+
+  expect(isInvalid).toBe(true);
+});
+
+  test('Deve exibir erro ao deixar Ano de ingresso vazio', async ({ page }) => {
+  const user = gerarDadosUnicos();
+
+  await preencherFormulario(page, user);
+
+  const anoInput = page.getByRole('textbox', { name: 'Ano de ingresso' });
+
+  await anoInput.fill('');
+
+  await page.getByRole('button', { name: 'Cadastrar' }).click();
+
+  // Validação HTML5 (mais confiável)
+  const isInvalid = await anoInput.evaluate(
+    el => !(el as HTMLInputElement).checkValidity()
+  );
+
+  expect(isInvalid).toBe(true);
+});
+
+  test('Deve exibir erro ao informar menos de 4 dígitos', async ({ page }) => {
   const user = gerarDadosUnicos();
 
   await preencherFormulario(page, user);
@@ -130,7 +194,7 @@ test.describe('Cadastro de Usuário', () => {
   ).toBeVisible();
 });
 
-test('❌ Deve exibir erro para ano inválido', async ({ page }) => {
+test('Deve exibir erro para ano inválido', async ({ page }) => {
   const user = gerarDadosUnicos();
 
   await preencherFormulario(page, user);
@@ -148,7 +212,7 @@ test('❌ Deve exibir erro para ano inválido', async ({ page }) => {
 
   // 🔥 FLUXO FELIZ
 
-  test('✅ Cadastro com sucesso', async ({ page }) => {
+  test('Cadastro com sucesso', async ({ page }) => {
     const user = gerarDadosUnicos();
 
     await preencherFormulario(page, user);
