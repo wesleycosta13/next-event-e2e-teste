@@ -102,6 +102,10 @@ test.describe('Cadastro de Usuário', () => {
     await preencherFormulario(page, user);
     await page.getByRole('button', { name: 'Cadastrar' }).click();
 
+    // 🔹 Aguardar a conclusão do primeiro cadastro antes de sair da página
+    // Senão o Playwright cancela a requisição HTTP e o usuário não é salvo no banco
+    await expect(page.getByRole('button', { name: 'Ir para o Login' })).toBeVisible();
+
     const outroUser = gerarDadosUnicos();
     outroUser.email = user.email;
 
@@ -109,7 +113,7 @@ test.describe('Cadastro de Usuário', () => {
     await preencherFormulario(page, outroUser);
     await page.getByRole('button', { name: 'Cadastrar' }).click();
 
-    await expect(page.getByText(/usuário já existe/i)).toBeVisible();
+    await expect(page.getByText(/usuário já existe|email já está em uso/i)).toBeVisible();
   });
 
   // 🔥 SENHA
