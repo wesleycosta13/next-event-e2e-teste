@@ -7,7 +7,7 @@ test.describe('Cadastro de Usuário', () => {
     await registerPage.navigate();
   });
 
-  test.describe('Validações de HTML5', () => {
+  test.describe('Validações de HTML', () => {
     test('Deve validar formato de Email inválido', async ({ registerPage }) => {
       const user = gerarDadosUsuario();
       user.email = 'email-invalido';
