@@ -17,15 +17,17 @@ export class RegisterPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.nomeInput = page.getByRole('textbox', { name: 'Nome Completo' });
-    this.matriculaInput = page.getByRole('textbox', { name: 'Matrícula' });
-    this.emailInput = page.getByRole('textbox', { name: 'Email' });
-    this.cpfInput = page.getByRole('textbox', { name: 'CPF' });
-    this.anoInput = page.getByRole('textbox', { name: 'Ano de ingresso' });
+    // Uso de IDs para maior estabilidade, mitigando problemas com getByRole em campos de senha
+    this.nomeInput = page.locator('#nome');
+    this.matriculaInput = page.locator('#matricula');
+    this.emailInput = page.locator('#email');
+    this.cpfInput = page.locator('#cpf');
+    this.anoInput = page.locator('#anoIngresso');
     this.semestreSelect = page.locator('#semestre');
     this.cursoSelect = page.locator('#curso');
-    this.senhaInput = page.getByRole('textbox', { name: 'Senha', exact: true });
-    this.confirmarSenhaInput = page.getByRole('textbox', { name: 'Confirmar sua senha' });
+    this.senhaInput = page.locator('#senha');
+    this.confirmarSenhaInput = page.locator('#confirmarSenha');
+    
     this.cadastrarButton = page.getByRole('button', { name: 'Cadastrar' });
     this.irParaLoginButton = page.getByRole('button', { name: 'Ir para o Login' });
   }
@@ -36,6 +38,7 @@ export class RegisterPage {
 
   async fillForm(user: UserData, options?: { senha?: string, ano?: string }) {
     await this.nomeInput.fill(user.nome);
+    
     await this.matriculaInput.fill(user.matricula);
     await this.emailInput.fill(user.email);
     await this.cpfInput.fill(user.cpf);
@@ -53,25 +56,30 @@ export class RegisterPage {
     await this.cadastrarButton.click();
   }
 
-  async waitForSuccessOrError() {
-    // Aguarda que o botão Ir para Login apareça (indicando sucesso do fluxo frontend/HTTP)
-    // Isso evita que a navegação feche antes da request do backend terminar.
-    await expect(this.irParaLoginButton).toBeVisible();
+  /**
+   * Aguarda o estado de sucesso da operação (aparecimento do botão de Ir para Login).
+   * Separado do fluxo de erro para evitar falsos positivos ou timeouts confusos.
+   */
+  async waitForSuccess() {
+    await expect(this.irParaLoginButton).toBeVisible({ timeout: 10000 });
   }
 
   async goToLogin() {
     await this.irParaLoginButton.click();
   }
 
-  async getEmailValidationMessage(): Promise<string> {
-    return await this.emailInput.evaluate(el => (el as HTMLInputElement).validationMessage);
+  /**
+   * Verifica se uma mensagem de erro de regra de negócio (backend) apareceu na tela.
+   */
+  async expectErrorToContainText(regexOrText: RegExp | string) {
+    const errorElement = this.page.getByText(regexOrText);
+    await expect(errorElement).toBeVisible();
   }
 
-  async getAnoValidationMessage(): Promise<string> {
-    return await this.anoInput.evaluate(el => (el as HTMLInputElement).validationMessage);
-  }
-
-  async getErrorMessage(regex: RegExp) {
-    return this.page.getByText(regex);
+  /**
+   * Retorna a mensagem de validação nativa do HTML5 (required, type, etc) de um input específico.
+   */
+  async getHtmlValidationMessage(locator: Locator): Promise<string> {
+    return await locator.evaluate((el: HTMLInputElement) => el.validationMessage);
   }
 }
